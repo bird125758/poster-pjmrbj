@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>票据每日价格双海报自动生成器</title>
+
+<style>
+body{
+    font-family:-apple-system,BlinkMacSystemFont,Arial;
+    background:#eef2f7;
+    margin:0;
+    padding:40px;
+}
+.container{
+    max-width:1100px;
+    margin:auto;
+    background:#fff;
+    padding:30px;
+    border-radius:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,.1);
+}
+h1{
+    margin-top:0;
+    color:#1e40af;
+}
+.controls{
+    margin-bottom:30px;
+}
+.poster-row{
+    display:flex;
+    gap:30px;
+    justify-content:center;
+}
+.poster-box{
+    text-align:center;
+}
+canvas{
+    width:320px;
+    border:1px solid #ddd;
+    border-radius:8px;
+}
+button{
+    margin-top:12px;
+    background:#2563eb;
+    color:#fff;
+    border:none;
+    padding:10px 18px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:15px;
+}
+button:hover{
+    background:#1d4ed8;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>📊 票据每日价格双海报自动生成器</h1>
+
+    <div class="controls">
+        <p>上传表格图片：</p>
+        <input type="file" id="tableImg" accept="image/*">
+        <br><br>
+        <button onclick="generateAll()">生成两张海报</button>
+    </div>
+
+    <div class="poster-row">
+        <div class="poster-box">
+            <canvas id="canvas1" width="1080" height="1920"></canvas><br>
+            <button onclick="downloadPoster(1)">下载海报 1</button>
+        </div>
+
+        <div class="poster-box">
+            <canvas id="canvas2" width="1080" height="1920"></canvas><br>
+            <button onclick="downloadPoster(2)">下载海报 2</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ================= 原始配置（不动） =================
+const POSTER_CONFIGS = [
+    {
+        bg: "template1.png",
+        date: { x: 540, y: 350 },   // ← 你原来调好的位置
+        table: { x: 100, y: 440, w: 880, h: 1000 }
+    },
+    {
+        bg: "template2.png",
+        date: { x: 540, y: 360 },
+        table: { x: 100, y: 450, w: 880, h: 1050 }
+    }
+];
+// ===================================================
+
+function getToday(){
+    const d = new Date();
+    return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+}
+
+function generateAll(){
+    const file = document.getElementById("tableImg").files[0];
+    if(!file){
+        alert("请先上传表格图片");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        POSTER_CONFIGS.forEach((cfg, i) => {
+            drawPoster(
+                document.getElementById("canvas" + (i + 1)),
+                cfg,
+                e.target.result
+            );
+        });
+    };
+    reader.readAsDataURL(file);
+}
+
+function drawPoster(canvas, cfg, tableBase64){
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const bg = new Image();
+    bg.onload = () => {
+        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+
+        // ===== 只让日期居中（不改位置）=====
+        ctx.font = "bold 48px Arial";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";   // 核心
+        ctx.fillText(
+            "票据每日报价：" + getToday(),
+            cfg.date.x,
+            cfg.date.y
+        );
+        ctx.textAlign = "left";     // 立刻恢复，防止影响其它元素
+
+        // ===== 表格图片 =====
+        const img = new Image();
+        img.onload = () => {
+            ctx.drawImage(
+                img,
+                cfg.table.x,
+                cfg.table.y,
+                cfg.table.w,
+                cfg.table.h
+            );
+        };
+        img.src = tableBase64;
+    };
+    bg.src = cfg.bg;
+}
+
+function downloadPoster(index){
+    const canvas = document.getElementById("canvas" + index);
+    canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `poster_${index}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+}
+</script>
+
+</body>
+</html>
